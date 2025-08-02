@@ -1,0 +1,17 @@
+# Node
+frontend/node_modules
+frontend/build
+npm-debug.log*
+
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
