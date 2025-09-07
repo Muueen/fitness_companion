@@ -3,7 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson import ObjectId
 import re
-from datetime import timedelta
+from datetime import timedelta, datetime
 from ..extensions import mongo
 
 auth_bp = Blueprint('auth', __name__)
@@ -350,3 +350,267 @@ def calculate_health_metrics():
 @auth_bp.route('/api/auth/test')
 def test_auth():
     return jsonify({'message': 'Auth blueprint working'}) 
+
+#collaboration routes
+
+from datetime import datetime
+from bson import ObjectId
+from flask import jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
+
+@auth_bp.route('/api/auth/collaboration/posts', methods=['POST'])
+@jwt_required()
+def create_collaboration_post():
+    """Create a new collaboration post for a workout."""
+    try:
+        user_id = get_jwt_identity()
+        payload = request.get_json(silent=True) or {}
+        
+        # Validate required fields
+        required_fields = ['workout_name', 'date', 'time', 'place']
+        for field in required_fields:
+            if not payload.get(field):
+                return jsonify({'success': False, 'message': f'{field} is required'}), 400
+        
+        # Get user info
+        user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        # Create collaboration post
+        post = {
+            'user_id': ObjectId(user_id),
+            'username': user.get('full_name', 'Unknown'),
+            'workout_name': payload['workout_name'],
+            'date': payload['date'],
+            'time': payload['time'],
+            'place': payload['place'],
+            'status': 'open',  # open, joined, cancelled
+            'created_at': datetime.utcnow()
+        }
+        
+        result = mongo.db.collaboration_posts.insert_one(post)
+        
+        # Convert ObjectId and datetime for JSON response
+        post['_id'] = str(result.inserted_id)
+        post['user_id'] = str(post['user_id'])
+        post['created_at'] = post['created_at'].isoformat()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Collaboration post created successfully',
+            'post': post
+        }), 201
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/collaboration/posts', methods=['GET'])
+@jwt_required()
+def get_collaboration_posts():
+    """Get all open collaboration posts."""
+    try:
+        posts = list(mongo.db.collaboration_posts.find({'status': 'open'}).sort('created_at', -1))
+        
+        # Convert ObjectId and datetime for JSON
+        for post in posts:
+            post['_id'] = str(post['_id'])
+            post['user_id'] = str(post['user_id'])
+            if isinstance(post['created_at'], datetime):
+                post['created_at'] = post['created_at'].isoformat()
+        
+        return jsonify({
+            'success': True,
+            'posts': posts
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/collaboration/posts/<post_id>', methods=['DELETE'])
+@jwt_required()
+def delete_collaboration_post(post_id):
+    """Delete a collaboration post (only by the creator)."""
+    try:
+        user_id = get_jwt_identity()
+        
+        post = mongo.db.collaboration_posts.find_one({'_id': ObjectId(post_id)})
+        if not post:
+            return jsonify({'success': False, 'message': 'Post not found'}), 404
+        
+        if str(post['user_id']) != user_id:
+            return jsonify({'success': False, 'message': 'You can only delete your own posts'}), 403
+        
+        if post['status'] != 'open':
+            return jsonify({'success': False, 'message': 'Cannot delete a post that has been joined'}), 400
+        
+        mongo.db.collaboration_posts.delete_one({'_id': ObjectId(post_id)})
+        
+        return jsonify({
+            'success': True,
+            'message': 'Post deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/collaboration/posts/<post_id>/join', methods=['POST'])
+@jwt_required()
+def join_collaboration_post(post_id):
+    """Join a collaboration post."""
+    try:
+        user_id = get_jwt_identity()
+        
+        user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        post = mongo.db.collaboration_posts.find_one({'_id': ObjectId(post_id)})
+        if not post:
+            return jsonify({'success': False, 'message': 'Post not found'}), 404
+        
+        if post['status'] != 'open':
+            return jsonify({'success': False, 'message': 'Post is no longer available'}), 400
+        
+        if str(post['user_id']) == user_id:
+            return jsonify({'success': False, 'message': 'You cannot join your own post'}), 400
+        
+        creator = mongo.db.users.find_one({'_id': post['user_id']})
+        creator_username = creator.get('full_name', 'Unknown') if creator else 'Unknown'
+        
+        # Add datetime in ISO format
+        now = datetime.utcnow()
+        collaboration_data = {
+            'workout_name': post['workout_name'],
+            'date': post['date'],
+            'time': post['time'],
+            'place': post['place'],
+            'partner_name': user.get('full_name', 'Unknown'),
+            'created_at': now.isoformat()
+        }
+        
+        # For the joining user: partner is the creator
+        joining_user_collab = {
+            'workout_name': post['workout_name'],
+            'date': post['date'],
+            'time': post['time'],
+            'place': post['place'],
+            'partner_name': creator_username,  # FIXED: now shows creator name
+            'created_at': now.isoformat()
+        }
+
+        mongo.db.users.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$push': {'collaborations': joining_user_collab}}
+        )
+
+        # For the creator: partner is the joining user
+        creator_collab = {
+            'workout_name': post['workout_name'],
+            'date': post['date'],
+            'time': post['time'],
+            'place': post['place'],
+            'partner_name': user.get('full_name', 'Unknown'),  # joining user's name
+            'created_at': now.isoformat()
+        }
+
+        mongo.db.users.update_one(
+            {'_id': post['user_id']},
+            {'$push': {'collaborations': creator_collab}}
+        )
+
+        
+        mongo.db.collaboration_posts.update_one(
+            {'_id': ObjectId(post_id)},
+            {'$set': {
+                'status': 'joined',
+                'joined_by': str(user_id),  # convert to string
+                'joined_at': now.isoformat()
+            }}
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Successfully joined the collaboration',
+            'collaboration': collaboration_data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/collaboration/list', methods=['GET'])
+@jwt_required()
+def get_collaboration_list():
+    """Get user's collaboration list."""
+    try:
+        user_id = get_jwt_identity()
+        
+        user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        collaborations = user.get('collaborations', [])
+        
+        # Convert datetime in collaborations
+        for collab in collaborations:
+            if isinstance(collab.get('created_at'), datetime):
+                collab['created_at'] = collab['created_at'].isoformat()
+        
+        return jsonify({
+            'success': True,
+            'collaborations': collaborations
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/collaboration/cancel/<collaboration_index>', methods=['POST'])
+@jwt_required()
+def cancel_collaboration(collaboration_index):
+    """Cancel a collaboration by removing it from both users' lists."""
+    try:
+        user_id = get_jwt_identity()
+        collaboration_index = int(collaboration_index)
+        
+        user = mongo.db.users.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        
+        collaborations = user.get('collaborations', [])
+        if collaboration_index >= len(collaborations):
+            return jsonify({'success': False, 'message': 'Collaboration not found'}), 404
+        
+        collaboration = collaborations[collaboration_index]
+        partner_name = collaboration.get('partner_name')
+        
+        mongo.db.users.update_one(
+            {'_id': ObjectId(user_id)},
+            {'$pull': {'collaborations': collaboration}}
+        )
+        
+        partner_collaboration = {
+            'workout_name': collaboration['workout_name'],
+            'date': collaboration['date'],
+            'time': collaboration['time'],
+            'place': collaboration['place'],
+            'partner_name': user.get('full_name', 'Unknown'),
+            'created_at': collaboration['created_at']
+        }
+        
+        mongo.db.users.update_one(
+            {'full_name': partner_name},
+            {'$pull': {'collaborations': partner_collaboration}}
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Collaboration cancelled successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500

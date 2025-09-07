@@ -14,5 +14,7 @@ def create_app():
     app.register_blueprint(auth_bp)
 
     # Other blueprints: workouts_bp, calculators_bp, etc.
+    from .workouts.routes import workouts_bp
+    app.register_blueprint(workouts_bp)
 
     return app
