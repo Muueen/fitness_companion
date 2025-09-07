@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
+import welcome_photo  from './images/welcome_photo.png';
 import ai_fit from './images/ai_fitness.png';
 import smart_plan from './images/smart_planning.png';
 import comm from './images/community.png';
@@ -60,6 +61,10 @@ const Home = () => {
     navigate('/profile');
   };
 
+  const handleCollaboration = () => {
+    navigate('/collaboration');
+  };
+
   return (
     <div className="home-container">
       {/* Background Image */}
@@ -80,6 +85,9 @@ const Home = () => {
             <button className="nav-button profile-btn" onClick={handleProfile}>
               Profile
             </button>
+            <button className="nav-button collaboration-btn" onClick={handleCollaboration}>
+              Collaboration
+            </button>
             <button 
               className={`nav-button logout-btn ${isLoggingOut ? 'loading' : ''}`} 
               onClick={handleLogout}
@@ -96,7 +104,7 @@ const Home = () => {
         {/* Welcome Section */}
         <div className="welcome-section">
           <div className="welcome-image">
-            <div className="fitness-illustration">🏃‍♂️</div>
+            <img src={welcome_photo} alt="welcome photo" className="welcome-photo" />
           </div>
         </div>
 
@@ -165,7 +173,7 @@ const Home = () => {
             <span className="action-icon">📊</span>
             View Progress
           </button>
-          <button className="action-button secondary-action">
+          <button className="action-button secondary-action" onClick={handleCollaboration}>
             <span className="action-icon">👥</span>
             Join Community
           </button>

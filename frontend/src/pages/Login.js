@@ -96,7 +96,7 @@ const Login = () => {
                 required
                 className="form-input"
               />
-              <span className="input-icon">📧</span>
+              <span className="input-icon"></span>
             </div>
           </div>
 
@@ -113,7 +113,7 @@ const Login = () => {
                 required
                 className="form-input"
               />
-              <span className="input-icon">🔒</span>
+              <span className="input-icon"></span>
               <button
                 type="button"
                 className="password-toggle"
@@ -150,7 +150,7 @@ const Login = () => {
           <p>Don't have an account? <a href="/register" className="signup-link">Sign up</a></p>
         </div>
 
-        <div className="social-login">
+        {/* <div className="social-login">
           <p>Or continue with</p>
           <div className="social-buttons">
             <button className="social-button google">
@@ -162,7 +162,7 @@ const Login = () => {
               Facebook
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

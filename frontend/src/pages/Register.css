@@ -109,7 +109,7 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
+  color: #fffbfb;
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -121,7 +121,7 @@
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: #1e1d1d !important;
 }
 
 .form-input:focus {
@@ -221,13 +221,16 @@
 }
 
 .checkmark {
-  width: 18px;
-  height: 18px;
+  display: inline-block;   /* or block */
+  width: 14px;             /* desired size */
+  height: 14px;            /* desired size */
   border: 2px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   position: relative;
   transition: all 0.3s ease;
-  flex-shrink: 0;
+  flex-shrink: 0;          /* prevent shrinking in flex */
+  top: 3px; /* move checkbox slightly lower */
+  margin-right: 8px;
 }
 
 .checkbox-wrapper input[type="checkbox"]:checked + .checkmark {
@@ -255,7 +258,6 @@
 .radio-wrapper {
   display: flex;
   align-items: center;
-  gap: 8px;
   cursor: pointer;
   color: #666;
   font-size: 0.9rem;
@@ -266,13 +268,16 @@
 }
 
 .radio-mark {
-  width: 18px;
-  height: 18px;
+  display: inline-block;
+  width: 20px;         /* size of the radio circle */
+  height: 20px;
   border: 2px solid #ddd;
-  border-radius: 50%;
-  position: relative;
-  transition: all 0.3s ease;
+  border-radius: 50%;  /* make it a circle */
+  position: relative;  
+  top: 2px;            /* nudge down to align with text */
   flex-shrink: 0;
+  margin-right: 10px;  /* horizontal gap between circle and text */
+  transition: all 0.3s ease;
 }
 
 .radio-wrapper input[type="radio"]:checked + .radio-mark {
@@ -285,8 +290,8 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 8px;
-  height: 8px;
+  width: 10px;         /* size of the inner dot */
+  height: 10px;
   background-color: #667eea;
   border-radius: 50%;
 }

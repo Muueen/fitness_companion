@@ -78,7 +78,7 @@
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  color: #333;
+  color: #ffffff !important;
   font-weight: 600;
   font-size: 0.9rem;
 }
@@ -96,7 +96,7 @@
   border-radius: 12px;
   font-size: 1rem;
   transition: all 0.3s ease;
-  background: #f8f9fa;
+  background: rgba(102, 126, 234, 0.1) !important;
 }
 
 .form-input:focus {

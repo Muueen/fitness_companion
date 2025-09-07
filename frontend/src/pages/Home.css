@@ -136,6 +136,14 @@
   backdrop-filter: blur(10px);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
+.welcome-photo {
+  width: 280px;
+  height: 280px;
+  margin-bottom: 15px;
+  display: block;
+  margin: 0 auto 15px auto;
+  animation: bounce 2s infinite;
+}
 
 .fitness-illustration {
   font-size: 8rem;

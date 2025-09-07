@@ -463,7 +463,7 @@ const Register = () => {
               </div>
             </div>
 
-            <div className="form-group">
+            {/* <div className="form-group">
               <label htmlFor="profilePicture">Profile Picture (Optional)</label>
               <input
                 type="file"
@@ -482,7 +482,7 @@ const Register = () => {
                   />
                 </div>
               )}
-            </div>
+            </div> */}
           </div>
 
           <button
