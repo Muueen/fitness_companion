@@ -10,6 +10,13 @@ const Profile = () => {
   const [healthMetrics, setHealthMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0,10));
+  const [generating, setGenerating] = useState(false);
+  const [plan, setPlan] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [statuses, setStatuses] = useState({});
+  const [updating, setUpdating] = useState(false);
+  const [modifying, setModifying] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -37,6 +44,108 @@ const Profile = () => {
       setError('Failed to load user data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateWorkout = async () => {
+    try {
+      setGenerating(true);
+      setError(null);
+      setPlan(null);
+      const res = await API.post('/generate-workout', {
+        start_date: startDate
+      });
+      if (res.data.success) {
+        setPlan(res.data.plan);
+        setStatuses(res.data.statuses || {});
+      } else {
+        setError(res.data.message || 'Failed to generate plan');
+      }
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to generate plan');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const showWorkout = async () => {
+    try {
+      setLoadingPlan(true);
+      setError(null);
+      setPlan(null);
+      const res = await API.get('/workout-plan', {
+        params: { start_date: startDate }
+      });
+      if (res.data.success) {
+        setPlan(res.data.plan);
+        setStatuses(res.data.statuses || {});
+      } else {
+        setError(res.data.message || 'No saved plan found');
+      }
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to load saved plan');
+    } finally {
+      setLoadingPlan(false);
+    }
+  };
+
+  const markDayStatus = async (dateKey, status) => {
+    try {
+      setUpdating(true);
+      setError(null);
+      const res = await API.post('/workout-day-status', {
+        start_date: startDate,
+        date_key: dateKey,
+        status
+      });
+      if (res.data.success) {
+        setStatuses(res.data.statuses || {});
+      } else {
+        setError(res.data.message || 'Failed to update day status');
+      }
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to update day status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const requestExerciseChange = async (dateKey, exercise) => {
+    const reason = window.prompt('Reason for change (optional):') || undefined;
+    try {
+      setUpdating(true);
+      setError(null);
+      const res = await API.post('/workout-change', {
+        start_date: startDate,
+        date_key: dateKey,
+        exercise,
+        reason
+      });
+      if (!res.data.success) {
+        setError(res.data.message || 'Failed to request change');
+      }
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to request change');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const modifyWorkoutPlan = async () => {
+    try {
+      setModifying(true);
+      setError(null);
+      const res = await API.post('/modify-workout-plan', { start_date: startDate });
+      if (res.data.success) {
+        setPlan(res.data.plan);
+        // change requests are cleared server-side; keep statuses as is for audit
+      } else {
+        setError(res.data.message || 'Failed to modify plan');
+      }
+    } catch (e) {
+      setError(e.response?.data?.message || 'Failed to modify plan');
+    } finally {
+      setModifying(false);
     }
   };
 
@@ -155,6 +264,74 @@ const Profile = () => {
                 </ul>
                 <p>You can update your profile information to enable these calculations.</p>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="profile-section">
+          <h2>Workout Planner</h2>
+          <div className="planner-controls">
+            <label>
+              Start date:
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                style={{ marginLeft: 8 }}
+              />
+            </label>
+            <button className="calculator-toggle-btn" onClick={generateWorkout} disabled={generating}>
+              {generating ? 'Generating...' : 'Generate 7-day Plan'}
+            </button>
+            <button className="calculator-toggle-btn" onClick={showWorkout} disabled={loadingPlan}>
+              {loadingPlan ? 'Loading...' : 'Show Workout Plan'}
+            </button>
+            <button className="calculator-toggle-btn" onClick={modifyWorkoutPlan} disabled={modifying}>
+              {modifying ? 'Modifying...' : 'Modify Work Plan'}
+            </button>
+          </div>
+          {plan && (
+            <div className="plan-container">
+              {Object.keys(plan).map((dateKey) => (
+                <div key={dateKey} className="plan-day">
+                  <h3>{dateKey}</h3>
+                  <p><strong>Time:</strong> {plan[dateKey].time}</p>
+                  <div style={{ marginBottom: 8 }}>
+                    <strong>Status:</strong> {statuses[dateKey] || 'pending'}
+                    <button
+                      className="calculator-toggle-btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => markDayStatus(dateKey, 'done')}
+                      disabled={updating}
+                    >
+                      Mark Done
+                    </button>
+                    <button
+                      className="calculator-toggle-btn"
+                      style={{ marginLeft: 8 }}
+                      onClick={() => markDayStatus(dateKey, 'missed')}
+                      disabled={updating}
+                    >
+                      Mark Missed
+                    </button>
+                  </div>
+                  <ul>
+                    {plan[dateKey].exercises.map((ex, idx) => (
+                      <li key={idx}>
+                        {ex}
+                        <button
+                          className="calculator-toggle-btn"
+                          style={{ marginLeft: 8 }}
+                          onClick={() => requestExerciseChange(dateKey, ex)}
+                          disabled={updating}
+                        >
+                          Change
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
         </div>
