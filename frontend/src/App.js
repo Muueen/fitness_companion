@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import Profile from './pages/Profile';
+import Collaboration from './pages/Collaboration';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -59,6 +60,9 @@ function App() {
           } />
           <Route path="/profile" element={
             isAuthenticated ? <Profile /> : <Navigate to="/login" replace />
+          } />
+          <Route path="/collaboration" element={
+            isAuthenticated ? <Collaboration /> : <Navigate to="/login" replace />
           } />
         </Routes>
       </div>
